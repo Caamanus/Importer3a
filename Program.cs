@@ -1,46 +1,111 @@
-﻿using System;
-using System.IO;
-using System.Threading.Tasks;
-using Microsoft.Azure.Storage;
+﻿using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
+using System;
+using System.IO;
+using System.Security.Permissions;
+using System.Threading.Tasks;
 
 namespace blob_quickstart
 {
     class Program
     {
+        // VALORES DE CONFIGURACION //
+        private const string contenedorNombre = "textosprueba1";
+        private const string ruta = "C://Seguimiento";
+        private const string extension = "*.TXT";
         public static void Main()
         {
-            Console.WriteLine("Azure Blob Storage - .NET quickstart sample\n");
-
-            // Run the examples asynchronously, wait for the results before proceeding
-            ProcessAsync().GetAwaiter().GetResult();
-
-            Console.WriteLine("Press any key to exit the sample application.");
-            Console.ReadLine();
+            // Ajuste la cantidad de guiones (-) para que coincidan.
+            Console.WriteLine("------------------------------------------------------- \n");
+            Console.WriteLine("--\\ Importer3a - (Inserte aquí nombre del cliente //-- \n");
+            Console.WriteLine("------------------------------------------------------- \n");
+            Console.WriteLine("\n");
+            Run();
+            //Console.WriteLine("Press any key to exit the sample application.");
+            //Console.ReadLine();
         }
-
+        /* --------------------------------------------------------------------------------------- */
+        // Subirá todos los archivos de la carpeta.
         private static async Task ProcessAsync()
         {
-            // PRUEBAS //
-            /*
-            string[] array2 = Directory.GetFiles(@"C:\Seguimiento", "*.TXT");
-
-            // Display all BIN files.
-            Console.WriteLine("--- TXT Files: ---");
-            foreach (string name in array2)
-            {
-                Console.WriteLine(name);
-            }
-            */
-            // Retrieve the connection string for use with the application. The storage 
-            // connection string is stored in an environment variable on the machine 
-            // running the application called STORAGE_CONNECTION_STRING. If the 
-            // environment variable is created after the application is launched in a 
-            // console or with Visual Studio, the shell or application needs to be closed
-            // and reloaded to take the environment variable into account.
-            
+            // Variable de Entorno para la conexión con el servicio
+            Console.WriteLine("Obteniendo Variable de Entorno...");
             string storageConnectionString = Environment.GetEnvironmentVariable("STORAGE_CONNECTION_STRING");
+            Console.WriteLine(" [OK]\n\n");
+            Console.WriteLine("Realizando conexión...");
+            // Check whether the connection string can be parsed.
+            CloudStorageAccount storageAccount;
+            if (CloudStorageAccount.TryParse(storageConnectionString, out storageAccount))
+            {
+                Console.WriteLine("[OK]\n\n");
+                // If the connection string is valid, proceed with operations against Blob
+                // storage here.
 
+                // Create the CloudBlobClient that represents the 
+                // Blob storage endpoint for the storage account.
+                CloudBlobClient cloudBlobClient = storageAccount.CreateCloudBlobClient();
+
+                // Create a container called 'quickstartblobs' and 
+                // append a GUID value to it to make the name unique.
+                CloudBlobContainer cloudBlobContainer =
+                    cloudBlobClient.GetContainerReference(contenedorNombre); // Nombre del contenedor
+
+                // SI NO EXISTE EL CONTENEDOR LO CREA, SI EXISTE MODIFICA SU CONTENIDO
+                await cloudBlobContainer.CreateIfNotExistsAsync();
+
+                // Set the permissions so the blobs are public.
+                BlobContainerPermissions permissions = new BlobContainerPermissions
+                {
+                    PublicAccess = BlobContainerPublicAccessType.Blob
+                };
+                await cloudBlobContainer.SetPermissionsAsync(permissions);
+
+                // AQUI SE CAMBIA EL DIRECTORIO DONDE SE ENCUENTRA LA CARPETA QUE SE QUIERE SUBIR SU CONTENIDO Y EL TIPO DE ARCHIVO.
+                string[] files = Directory.GetFiles(ruta, extension);
+                Console.WriteLine("Subiendo archivos de " + ruta + "\n\n");
+                foreach (string filePath in files)
+                {
+                    string fileName = Path.GetFileName(filePath);
+                    Console.WriteLine("Archivo = {0}", filePath);
+                    Console.WriteLine();
+                    Console.WriteLine("Subiendo a Blob storage como blob '{0}'...", fileName);
+                    Console.WriteLine();
+                    // Get a reference to the blob address, then upload the file to the blob.
+                    // Use the value of localFileName for the blob name.
+                    CloudBlockBlob cloudBlockBlob = cloudBlobContainer.GetBlockBlobReference(fileName);
+                    await cloudBlockBlob.UploadFromFileAsync(filePath);
+                }
+
+                textoInicio();
+
+            }
+            else
+            {
+                Console.WriteLine("[ERROR]\n\n");
+                // Otherwise, let the user know that they need to define the environment variable.
+                Console.WriteLine(
+                    "La conexión falló.\n " +
+                    "Puede ser por las siguiente opciones:\n" +
+                    "  - Variable de Entorno no definida. \n" +
+                    "  - Variable de Entorno incorrecta o caduca. \n\n" +
+                    "En caso de la primera opción, Añada una Variable de Entorno de Sistema llamada 'STORAGE_CONNECTION_STRING'\n" +
+                    " y como valor añada la key Connection String. Ejemplo: 'DefaultEndpointsProtocol=https;AccountName=triplealpha;AccountKey=fQsntF2...'\n\n");
+                Console.WriteLine("Pulse cualquier tecla para salir de la aplicación.");
+                Console.ReadLine();
+            }
+        }
+        /* --------------------------------------------------------------------------------------- */
+
+
+        /* --------------------------------------------------------------------------------------- */
+        // Subirá solo los modificados.
+        private static async Task ProcessAsync(string fileOld, string fileNew)
+        {
+            // Variable de Entorno para la conexión con el servicio
+            Console.WriteLine("Obteniendo Variable de Entorno...");
+            string storageConnectionString = Environment.GetEnvironmentVariable("STORAGE_CONNECTION_STRING");
+            Console.WriteLine(" [OK]\n\n");
+            Console.WriteLine("Realizando conexión...");
             // Check whether the connection string can be parsed.
             CloudStorageAccount storageAccount;
             if (CloudStorageAccount.TryParse(storageConnectionString, out storageAccount))
@@ -55,9 +120,12 @@ namespace blob_quickstart
                 // Create a container called 'quickstartblobs' and 
                 // append a GUID value to it to make the name unique.
                 CloudBlobContainer cloudBlobContainer =
-                    cloudBlobClient.GetContainerReference("textosprueba1"+
-                        Guid.NewGuid().ToString());
-                await cloudBlobContainer.CreateAsync();
+                    cloudBlobClient.GetContainerReference(contenedorNombre); // Nombre del contenedor
+                // Guid.NewGuid().ToString());
+                // await cloudBlobContainer.CreateAsync();
+
+                // SI NO EXISTE EL CONTENEDOR LO CREA, SI EXISTE MODIFICA SU CONTENIDO
+                await cloudBlobContainer.CreateIfNotExistsAsync();
 
                 // Set the permissions so the blobs are public.
                 BlobContainerPermissions permissions = new BlobContainerPermissions
@@ -74,62 +142,135 @@ namespace blob_quickstart
                 */
                 // Write text to the file.
                 // File.WriteAllText(sourceFile, "Hello, World!");
-                string[] files = Directory.GetFiles(@"C:\Seguimiento", "*.TXT");
-                foreach (string filePath in files)
+
+                // AQUI SE CAMBIA EL DIRECTORIO DONDE SE ENCUENTRA LA CARPETA QUE SE QUIERE SUBIR SU CONTENIDO Y EL TIPO DE ARCHIVO.
+                // string[] files = Directory.GetFiles(ruta, extension);
+                if (fileOld.Equals(fileNew))
                 {
-                    string fileName = Path.GetFileName(filePath);
-                    Console.WriteLine("Temp file = {0}", filePath);
-                    Console.WriteLine("Uploading to Blob storage as blob '{0}'", fileName);
-                    // Get a reference to the blob address, then upload the file to the blob.
-                    // Use the value of localFileName for the blob name.
-                    CloudBlockBlob cloudBlockBlob = cloudBlobContainer.GetBlockBlobReference(fileName);
-                    await cloudBlockBlob.UploadFromFileAsync(filePath);
+                    string sourceFile = Path.Combine(ruta, fileNew);
+
+                    Console.WriteLine("Subiendo a Blob storage como blob '{0}'...", fileNew);
+                    CloudBlockBlob cloudBlockBlob = cloudBlobContainer.GetBlockBlobReference(fileNew);
+                    await cloudBlockBlob.UploadFromFileAsync(sourceFile);
+                    Console.WriteLine("[OK]\n");
                 }
-                /*
-                Console.WriteLine("Temp file = {0}", sourceFile);
-                Console.WriteLine("Uploading to Blob storage as blob '{0}'", localFileName);
-                */
-                // Get a reference to the blob address, then upload the file to the blob.
-                // Use the value of localFileName for the blob name.
-
-                /*
-                CloudBlockBlob cloudBlockBlob = cloudBlobContainer.GetBlockBlobReference(localFileName);
-                await cloudBlockBlob.UploadFromFileAsync(sourceFile);
-                */
-
-                /*
-                // List the blobs in the container.
-                Console.WriteLine("List blobs in container.");
-                BlobContinuationToken blobContinuationToken = null;
-                do
+                else
                 {
-                    var results = await cloudBlobContainer.ListBlobsSegmentedAsync(null, blobContinuationToken);
-                    // Get the value of the continuation token returned by the listing call.
-                    blobContinuationToken = results.ContinuationToken;
-                    foreach (IListBlobItem item in results.Results)
-                    {
-                        Console.WriteLine(item.Uri);
-                    }
-                } while (blobContinuationToken != null); // Loop while the continuation token is not null.
+                    string sourceFile = Path.Combine(ruta, fileNew);
 
-                // Download the blob to a local file, using the reference created earlier.
-                // Append the string "_DOWNLOADED" before the .txt extension so that you 
-                // can see both files in MyDocuments.
-                string destinationFile = sourceFile; //.Replace(".txt", "_DOWNLOADED.txt");
-                Console.WriteLine("Downloading blob to {0}", destinationFile);
-                await cloudBlockBlob.DownloadToFileAsync(destinationFile, FileMode.Create);
-                */
+                    Console.WriteLine("sustituyendo " + fileOld + " como " + fileNew + " a Blob storage como blob...");
+                    CloudBlockBlob cloudBlockBlob = cloudBlobContainer.GetBlockBlobReference(fileOld);
+                    await cloudBlockBlob.DeleteIfExistsAsync();
+
+                    cloudBlockBlob = cloudBlobContainer.GetBlockBlobReference(fileNew);
+                    await cloudBlockBlob.UploadFromFileAsync(sourceFile);
+                    Console.WriteLine("[OK]");
+
+                    textoInicio();
+                }
+
             }
             else
             {
+                Console.WriteLine("[ERROR]\n\n");
                 // Otherwise, let the user know that they need to define the environment variable.
                 Console.WriteLine(
-                    "A connection string has not been defined in the system environment variables. " +
-                    "Add an environment variable named 'STORAGE_CONNECTION_STRING' with your storage " +
-                    "connection string as a value.");
-                Console.WriteLine("Press any key to exit the application.");
+                    "La conexión falló.\n " +
+                    "Puede ser por las siguiente opciones:\n" +
+                    "  - Variable de Entorno no definida. \n" +
+                    "  - Variable de Entorno incorrecta o caduca. \n\n" +
+                    "En caso de la primera opción, Añada una Variable de Entorno de Sistema llamada 'STORAGE_CONNECTION_STRING'\n" +
+                    " y como valor añada la key Connection String. Ejemplo: 'DefaultEndpointsProtocol=https;AccountName=triplealpha;AccountKey=fQsntF2...'\n\n");
+                Console.WriteLine("Pulse cualquier tecla para salir de la aplicación.");
                 Console.ReadLine();
             }
         }
+        /* --------------------------------------------------------------------------------------- */
+
+
+        // SE ENCARGA DE NOTIFICAR CUALQUIER CAMBIO EN LA CARPETA DE DESTINO
+
+        [PermissionSet(SecurityAction.Demand, Name = "FullTrust")]
+        private static void Run()
+        {
+            // Create a new FileSystemWatcher and set its properties.
+            using (FileSystemWatcher watcher = new FileSystemWatcher())
+            {
+                //watcher.Path = args[1];
+                watcher.Path = ruta;
+                // Watch for changes in LastAccess and LastWrite times, and
+                // the renaming of files or directories.
+                watcher.NotifyFilter = NotifyFilters.LastAccess
+                                     | NotifyFilters.LastWrite
+                                     | NotifyFilters.FileName
+                                     | NotifyFilters.DirectoryName;
+
+                // Only watch text files.
+                // SOLO ESCUCHA ESTE TIPO DE ARCHIVO, EN CASO DE QUERER TODOS LOS ARCHIVOS, DEJAR VACIO ESTE CAMPO.
+                watcher.Filter = extension;
+
+                // Add event handlers.
+                watcher.Changed += OnChanged;
+                watcher.Created += OnCreated;
+                watcher.Deleted += OnDeleted;
+                watcher.Renamed += OnRenamed;
+
+                // Begin watching.
+                watcher.EnableRaisingEvents = true;
+
+                // Wait for the user to quit the program.
+                Console.WriteLine("----------------------------------------");
+                Console.WriteLine("- Opciones |'1' Subir Todo | 'q' Salir -");
+                Console.WriteLine("----------------------------------------");
+                if (Console.Read() == '1')
+                {
+                    ProcessAsync().GetAwaiter().GetResult(); ;
+                }
+                while (Console.Read() != 'q') ;
+            }
+        }
+
+        private static void textoInicio()
+        {
+            Console.WriteLine("----------------------------------------");
+            Console.WriteLine("- Opciones |'1' Subir Todo | 'q' Salir -");
+            Console.WriteLine("----------------------------------------");
+        }
+
+        // Define the event handlers.
+        private static void OnChanged(object source, FileSystemEventArgs e) //=>
+        {
+            // Specify what is done when a file is changed, created, or deleted.
+            ProcessAsync(e.Name, e.Name).GetAwaiter().GetResult();
+            Console.WriteLine($"Archivo: {e.FullPath} {e.ChangeType} \n\n");
+
+            textoInicio();
+        }
+
+        private static void OnCreated(object source, FileSystemEventArgs e) //=>
+        {
+            // Specify what is done when a file is changed, created, or deleted.
+            ProcessAsync(e.Name, e.Name).GetAwaiter().GetResult();
+            Console.WriteLine($"Archivo: {e.FullPath} {e.ChangeType} \n\n");
+
+            textoInicio();
+        }
+
+        private static void OnDeleted(object source, FileSystemEventArgs e) //=>
+        {
+            Console.WriteLine($"Archivo: {e.Name} {e.ChangeType} \n\n");
+
+            textoInicio();
+        }
+
+        private static void OnRenamed(object source, RenamedEventArgs e) //=>
+        {
+            // Specify what is done when a file is renamed.
+            ProcessAsync(e.OldName, e.Name).GetAwaiter().GetResult();
+            Console.WriteLine($"Archivo: {e.OldFullPath} renombrado a {e.FullPath} \n\n");
+
+            textoInicio();
+        }
+
     }
 }
