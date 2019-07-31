@@ -13,12 +13,13 @@ namespace blob_quickstart
         private const string contenedorNombre = "textosprueba1";
         private const string ruta = "C://Seguimiento";
         private const string extension = "*.TXT";
+        public const string cliente = "JEALSA";
         public static void Main()
         {
             // Ajuste la cantidad de guiones (-) para que coincidan.
-            Console.WriteLine("------------------------------------------------------- \n");
-            Console.WriteLine("--\\ Importer3a - (Inserte aquí nombre del cliente //-- \n");
-            Console.WriteLine("------------------------------------------------------- \n");
+            Console.WriteLine("-----------------------------------" + lineas() + " \n");
+            Console.WriteLine("--\\ Importer3a -       " + cliente + "       -- \n");
+            Console.WriteLine("-----------------------------------" + lineas() + " \n");
             Console.WriteLine("\n");
             Run();
             //Console.WriteLine("Press any key to exit the sample application.");
@@ -270,6 +271,16 @@ namespace blob_quickstart
             Console.WriteLine($"Archivo: {e.OldFullPath} renombrado a {e.FullPath} \n\n");
 
             textoInicio();
+        }
+
+        private static string lineas()
+        {
+            string lineas = "";
+            for (int i = 0; i < cliente.Length; i++)
+            {
+                lineas += "-";
+            }
+            return lineas;
         }
 
     }
